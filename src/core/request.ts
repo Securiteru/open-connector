@@ -120,8 +120,8 @@ export async function readBoundedResponseBytes(
   return bytes;
 }
 
-const privateHostnames = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
-const privateHostnameSuffixes = [".localhost", ".local"];
+const privateHostnames = new Set(["localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback"]);
+const privateHostnameSuffixes = [".localhost", ".local", ".localdomain", ".internal", ".home", ".lan"];
 const privateIpv4Cidrs: Array<[number, number]> = [
   [ipv4ToNumber("0.0.0.0"), 8],
   [ipv4ToNumber("10.0.0.0"), 8],
@@ -162,7 +162,7 @@ export function assertPublicHttpUrl(value: string, options: PublicHttpUrlOptions
     throw options.createError(`${options.fieldName} must use http or https`);
   }
 
-  const hostname = url.hostname.toLowerCase();
+  const hostname = normalizeHostname(url.hostname);
   if (privateHostnames.has(hostname) || privateHostnameSuffixes.some((suffix) => hostname.endsWith(suffix))) {
     throw options.createError(`${options.fieldName} must not target local hosts`);
   }
@@ -176,7 +176,18 @@ export function assertPublicHttpUrl(value: string, options: PublicHttpUrlOptions
     throw options.createError(`${options.fieldName} must not target IPv6 addresses`);
   }
 
+  if (hostname !== url.hostname) {
+    url.hostname = hostname;
+  }
   return url;
+}
+
+function normalizeHostname(value: string): string {
+  let hostname = value.toLowerCase();
+  while (hostname.endsWith(".")) {
+    hostname = hostname.slice(0, -1);
+  }
+  return hostname;
 }
 
 function parseIpv4(hostname: string): number | undefined {

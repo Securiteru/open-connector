@@ -1,26 +1,16 @@
-import type { ProviderDefinition } from "../src/core/types.ts";
-
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { loadProviderSources } from "./provider-source.ts";
 
 const providersDir = join(process.cwd(), "src/providers");
-const entries = await readdir(providersDir, { withFileTypes: true });
-const services = entries
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name)
-  .sort((a, b) => a.localeCompare(b));
+const providerSources = await loadProviderSources();
+const services = providerSources.map((source) => source.service);
 const executableActionIds = new Map<string, string[]>(
-  await Promise.all(
-    services.map(async (service): Promise<[string, string[]]> => {
-      const module = (await import(`../src/providers/${service}/definition.ts`)) as ProviderDefinitionModule;
-      return [service, module.provider.actions.map((action) => action.id).sort((a, b) => a.localeCompare(b))];
-    }),
-  ),
+  providerSources.map((source) => [
+    source.service,
+    source.definition.actions.map((action) => action.id).sort((a, b) => a.localeCompare(b)),
+  ]),
 );
-
-interface ProviderDefinitionModule {
-  provider: ProviderDefinition;
-}
 
 function propertyName(service: string): string {
   return /^[A-Za-z_$][\w$]*$/.test(service) ? service : JSON.stringify(service);
