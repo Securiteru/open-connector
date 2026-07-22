@@ -15,6 +15,8 @@ RUN npm run build
 RUN npm run build --workspace web
 
 FROM node:24-alpine
+# app.json healthcheck (baked into image for Dokku git:from-image)
+COPY app.json /app.json
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
